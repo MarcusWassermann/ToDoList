@@ -1,27 +1,50 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:to_do_app/models/todo.dart';
 
 class TodoRepository {
-  final List<Todo> _todos = [
-    Todo(title: 'To-Do 1'),
-    Todo(title: 'To-Do 2'),
-    Todo(title: 'To-Do 3'),
-    Todo(title: 'To-Do 4'),
-    Todo(title: 'To-Do 5'),
-  ];
+  late SharedPreferences _prefs;
+
+  TodoRepository() {
+    _initPrefs();
+  }
+
+  Future<void> _initPrefs() async {
+    _prefs = await SharedPreferences.getInstance();
+  }
 
   List<Todo> getTodos() {
-    return List.from(_todos);
+    final List<String>? todoList = _prefs.getStringList('todos');
+    if (todoList == null) {
+      return [];
+    } else {
+      return todoList
+          .map((jsonString) => Todo.fromJson(jsonDecode(jsonString)))
+          .toList();
+    }
   }
 
-  void addTodo(Todo todo) {
-    _todos.add(todo);
+  Future<void> addTodo(Todo todo) async {
+    final List<Todo> todos = getTodos();
+    todos.add(todo);
+    await _saveTodos(todos);
   }
 
-  void toggleTodoStatus(int index) {
-    _todos[index].toggleStatus();
+  Future<void> removeTodoAtIndex(int index) async {
+    final List<Todo> todos = getTodos();
+    todos.removeAt(index);
+    await _saveTodos(todos);
   }
 
-  void removeTodo(int index) {
-    _todos.removeAt(index);
+  Future<void> updateTodoAtIndex(int index, Todo updatedTodo) async {
+    final List<Todo> todos = getTodos();
+    todos[index] = updatedTodo;
+    await _saveTodos(todos);
+  }
+
+  Future<void> _saveTodos(List<Todo> todos) async {
+    final List<String> jsonList =
+        todos.map((todo) => jsonEncode(todo.toJson())).toList();
+    await _prefs.setStringList('todos', jsonList);
   }
 }
