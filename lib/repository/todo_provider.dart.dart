@@ -10,6 +10,10 @@ class TodoProvider extends ChangeNotifier {
 
   List<Todo> get todos => _todos;
 
+  int get openTodosCount => _todos.where((todo) => !todo.isDone).length;
+
+  int get completedTodosCount => _todos.where((todo) => todo.isDone).length;
+
   TodoProvider() {
     _initPrefs();
   }
