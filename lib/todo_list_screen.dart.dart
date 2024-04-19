@@ -1,13 +1,15 @@
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:to_do_app/models/todo.dart';
 import 'package:to_do_app/repository/todo_provider.dart.dart';
-import 'todo_input_field.dart';
-import 'todo_item.dart';
-import 'todo_count_row.dart';
+import 'package:to_do_app/widgets/todo_count_row.dart';
+import 'package:to_do_app/widgets/todo_input_field.dart';
+import 'package:to_do_app/widgets/todo_item.dart';
 
 class TodoListScreen extends StatefulWidget {
-  const TodoListScreen({Key? key}) : super(key: key);
+  const TodoListScreen({super.key});
 
   @override
   _TodoListScreenState createState() => _TodoListScreenState();
@@ -22,8 +24,8 @@ class _TodoListScreenState extends State<TodoListScreen> {
       body: Consumer<TodoProvider>(
         builder: (context, todoProvider, _) {
           List<Todo> todos = todoProvider.todos;
-          int openTodosCount = todoProvider.openTodosCount;
-          int completedTodosCount = todoProvider.completedTodosCount;
+          int openTodosCount = todoProvider.openTodosCount ?? 0;
+          int completedTodosCount = todoProvider.completedTodosCount ?? 0;
           return Stack(
             children: [
               Container(
@@ -38,9 +40,8 @@ class _TodoListScreenState extends State<TodoListScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(
-                      height: MediaQuery.of(context)
-                          .padding
-                          .top), // Berücksichtigt die Höhe der Statusleiste
+                    height: MediaQuery.of(context).padding.top,
+                  ),
                   Row(
                     children: [
                       Expanded(
@@ -51,14 +52,15 @@ class _TodoListScreenState extends State<TodoListScreen> {
                       ),
                       IconButton(
                         onPressed: () {
-                          // Neue ToDo dem Provider hinzugefügt
-                          todoProvider.addTodo(Todo(
-                            title: _controller.text,
-                            isDone: false,
-                            createdAt: DateTime.now(),
-                            completedAt: null,
-                          ));
-                          _controller.clear();
+                          if (_controller.text.isNotEmpty) {
+                            todoProvider.addTodo(Todo(
+                              title: _controller.text,
+                              isDone: false,
+                              createdAt: DateTime.now(),
+                              completedAt: null,
+                            ));
+                            _controller.clear();
+                          }
                         },
                         icon: const Icon(Icons.add),
                         color: Colors.white,
@@ -70,7 +72,50 @@ class _TodoListScreenState extends State<TodoListScreen> {
                       itemCount: todos.length,
                       itemBuilder: (context, index) {
                         final todo = todos[index];
-                        return TodoItem(todo: todo, index: index);
+                        return ListTile(
+                          title: TodoItem(todo: todo, index: index),
+                          onTap: () async {
+                            bool delete = await showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('ToDo löschen?'),
+                                content: Text(
+                                    'Möchtest du "${todo.title}" wirklich löschen?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context, false);
+                                    },
+                                    child: const Text('Abbrechen'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context, true);
+                                    },
+                                    child: const Text('Löschen'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (delete == true) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content:
+                                      Text('ToDo "${todo.title}" gelöscht.'),
+                                  duration: const Duration(seconds: 2),
+                                  action: SnackBarAction(
+                                    label: 'Rückgängig',
+                                    onPressed: () {
+                                      todoProvider.addTodo(todo);
+                                    },
+                                  ),
+                                ),
+                              );
+                              todoProvider.removeTodoAtIndex(index);
+                            }
+                          },
+                        );
                       },
                     ),
                   ),
